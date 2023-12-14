@@ -1,4 +1,5 @@
 <?php
+use Aws\Sts\StsClient;
 use Aws\Rekognition;
 use Aws\Credentials\Credentials;
 
@@ -6,10 +7,8 @@ class RekognitionComponent extends Component {
 	public $settings = array(
 		'accessKey' => '',
 		'secretKey' => '',
-		'sessionToken' => '',
 		'region' => 'eu-west-2'
 	);
-	private $tag = 'Rekognition';
 
 	public function initialize(Controller $controller, $settings = array()) {
 		$this->controller = $controller;
@@ -17,7 +16,10 @@ class RekognitionComponent extends Component {
 	}
 
 	public function verify($image_1, $image_2) {
-		$credentials = new Aws\Credentials\Credentials($this->settings['accessKey'], $this->settings['secretKey'], $this->settings['sessionToken']);
+		$temporaryCredentials = $this->_generateTemporaryCredentials($this->settings['accessKey'], $this->settings['secretKey']);
+		pr($temporaryCredentials);
+		die();
+		$credentials = new Aws\Credentials\Credentials($temporaryCredentials['accessKey'], $temporaryCredentials['secretKey'], $temporaryCredentials['sessionToken']);
 		$client = new Rekognition\RekognitionClient(array(
 			'configuration_mode' => 'standard',
 			'credentials' => $credentials,
@@ -26,10 +28,29 @@ class RekognitionComponent extends Component {
 		));
 		$result = $client->compareFaces(array(
 			'QualityFilter' => 'AUTO',
-			'SimilarityThreshold' => 90,
+			'SimilarityThreshold' => 0,
 			'SourceImage' => array('Bytes' => $image_1),
 			'TargetImage' => array('Bytes' => $image_2)
 		));
 		return $result;
+	}
+
+	private function _generateTemporaryCredentials($accessKey, $secretKey, $region = 'us-east-1', $durationSeconds = 3600) {
+		$stsClient = new StsClient(array(
+			'version' => 'latest',
+			'region' => $region,
+			'credentials' => array(
+				'key' => $accessKey,
+				'secret' => $secretKey
+			)
+		));
+		$result = $stsClient->getSessionToken(array('DurationSeconds' => $durationSeconds));
+		$credentials = $result['Credentials'];
+		return array(
+			'accessKey' => $credentials['AccessKeyId'],
+			'secretKey' => $credentials['SecretAccessKey'],
+			'sessionToken' => $credentials['SessionToken'],
+			'expiration' => $credentials['Expiration']
+		);
 	}
 }
