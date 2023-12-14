@@ -17,8 +17,6 @@ class RekognitionComponent extends Component {
 
 	public function verify($image_1, $image_2) {
 		$temporaryCredentials = $this->_generateTemporaryCredentials($this->settings['accessKey'], $this->settings['secretKey']);
-		pr($temporaryCredentials);
-		die();
 		$credentials = new Aws\Credentials\Credentials($temporaryCredentials['accessKey'], $temporaryCredentials['secretKey'], $temporaryCredentials['sessionToken']);
 		$client = new Rekognition\RekognitionClient(array(
 			'configuration_mode' => 'standard',
